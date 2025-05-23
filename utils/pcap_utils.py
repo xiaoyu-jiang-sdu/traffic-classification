@@ -57,5 +57,5 @@ def filter_pcap(pcap_dir, output_dir):
         print(f'clean file "{filename}"finish')
 
 if __name__ == '__main__':
-    output_dir = "E:/ChromeDownload/USTC-TFC2016-master/filtered"
-    filter_pcap('E:/ChromeDownload/USTC-TFC2016-master/dataset',output_dir)
+    output_dir = "E:/ChromeDownload/Tor/filtered"
+    filter_pcap('E:/ChromeDownload/Tor/Tor',output_dir)

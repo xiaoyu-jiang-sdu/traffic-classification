@@ -105,6 +105,16 @@ class Model(nn.Module):
         aim_embeddings = self.llm_model.get_input_embeddings()(aim.to(device))
         x = torch.cat([prompt_embeddings, flow, aim_embeddings], dim=1)
         x = self.llm_model(inputs_embeds=x).last_hidden_state
-        flow_cls = x[:, -1, :]  # batch_size * d_llm
+        flow_cls = x[:, -1, :]  # batch_size * d_llmdata
         labels = self.classifier(flow_cls)
         return labels
+
+    def save_model_states(self, checkpoint_path):
+        torch.save(self.mapping_layer.state_dict(), checkpoint_path + "mapping_layer.pt")
+        torch.save(self.reprogramming_layer.state_dict(), checkpoint_path + "reprogramming_layer.pt")
+        torch.save(self.classifier.state_dict(), checkpoint_path + "classifier.pt")
+
+    def load_model_states(self, checkpoint_path):
+        self.mapping_layer.load_state_dict(torch.load(checkpoint_path + "mapping_layer.pt", weights_only=False))
+        self.reprogramming_layer.load_state_dict(torch.load(checkpoint_path + "reprogramming_layer.pt", weights_only=False))
+        self.classifier.load_state_dict(torch.load(checkpoint_path + "classifier.pt", weights_only=False))

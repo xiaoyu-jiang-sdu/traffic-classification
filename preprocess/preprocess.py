@@ -63,13 +63,30 @@ def read_flow(pcap_files, label, max_packet_num=5):
     return data
 
 
+def read_raw_flow(pcap_files, label, max_packet_num=5):
+    data = []
+    for pcap_file in pcap_files:
+        with PcapReader(pcap_file) as pcap_reader:
+            link_type = pcap_reader.linktype
+        packets = rdpcap(pcap_file)
+        flow_bytes = ''
+        for packet in packets[:max_packet_num]:
+            header, payload = packet_2_str(packet)
+            flow_bytes += ' '.join(string_2_hex_array(header)) + ' '
+            flow_bytes += ' '.join(string_2_hex_array(payload))
+            flow_bytes += ';'
+        duration = packets[-1].time - packets[0].time
+        data.append([label, len(packets), link_type, duration, flow_bytes])
+    return data
+
+
 def preprocess_USTC_TFC():
     path = "E:/ChromeDownload/USTC-TFC2016-master/flows_sampled"
-    with open('../mapper/USTC-TFC.json', 'r') as jsonData:
+    with open('../mapper/USTC-TFC-2cls.json', 'r') as jsonData:
         mapper = json.load(jsonData)
 
     data = []
-    csv_path = '../data/ustc-tfc2016.csv'
+    csv_path = '../data/USTC-TFC2016/2cls/2cls.csv'
     if not os.path.exists(csv_path):
         df = pd.DataFrame(data, columns=['label', 'count', 'link_type', 'duration', 'flow'])
         df.to_csv(csv_path, index=False)

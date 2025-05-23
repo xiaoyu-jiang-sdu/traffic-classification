@@ -1,0 +1,1 @@
+python tc_train.py --from_ckpt --train_epoch=1

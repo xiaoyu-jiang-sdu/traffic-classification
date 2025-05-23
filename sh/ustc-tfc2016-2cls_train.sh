@@ -1,0 +1,1 @@
+python tc_train.py --train_epoch=1 --checkpoints='./checkpoints/USTC-TFC2016-2cls/' --data_dir='./data/USTC-TFC2016/2cls/' --num_labels=2

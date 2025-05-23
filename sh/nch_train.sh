@@ -1,0 +1,1 @@
+accelerate launch nch_train.py

@@ -13,6 +13,6 @@ def split_pcap(pcap_files, output_dir):
 
 
 if __name__ == '__main__':
-    pcap_files = find_files('E:/ChromeDownload/USTC-TFC2016-master/filtered')
+    pcap_files = find_files('E:/ChromeDownload/Tor/Tor')
     for pcap_file in pcap_files:
-        split_pcap([pcap_file],'E:/ChromeDownload/USTC-TFC2016-master/split')
+        split_pcap([pcap_file],'E:/ChromeDownload/Tor/split')

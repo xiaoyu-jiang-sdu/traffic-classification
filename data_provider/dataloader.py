@@ -36,3 +36,27 @@ def flow_2_header_payload_tensor(flow):
     headers = torch.tensor(headers)
     payloads = torch.tensor(payloads)
     return headers, payloads
+
+
+class RawFlowDataset(Dataset):
+    def __init__(self, tsv_file, tokenizer):
+        self.tokenizer = tokenizer
+        self.data = pd.read_csv(tsv_file)
+        self.data["flow"] = self.data["flow"]
+        self.data["count"] = self.data["count"]
+        self.data["link_type"] = self.data["link_type"]
+        self.data["duration"] = self.data["duration"]
+        self.data["label"] = self.data["label"]
+
+    def __len__(self):
+        return len(self.data['label'])
+
+    def __getitem__(self, idx):
+        # 返回每个流量数据
+        flow = self.data.iloc[idx]["flow"]
+        label = self.data.iloc[idx]["label"]
+        packet_num = self.data.iloc[idx]['count']
+        link_type = self.data.iloc[idx]['link_type']
+        duration = self.data.iloc[idx]['duration']
+        flow = self.tokenizer(flow, return_tensors="pt", padding=True, truncation=True, max_length=2048).input_ids
+        return flow, packet_num, link_type, duration, label

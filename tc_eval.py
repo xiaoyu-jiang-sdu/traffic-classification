@@ -11,11 +11,10 @@ from models import TCLLM
 
 import random
 import numpy as np
-from collections import OrderedDict
-
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, classification_report
 
 parser = argparse.ArgumentParser(description='TC-LLM')
+
 fix_seed = 2025
 random.seed(fix_seed)
 torch.manual_seed(fix_seed)
@@ -25,12 +24,12 @@ np.random.seed(fix_seed)
 parser.add_argument('--seed', type=int, default=2025, help='random seed')
 
 # data loader
-parser.add_argument('--merge_ckpt', type=str, default='./merge_ckpt/', help='location of models checkpoints')
+parser.add_argument('--checkpoints', type=str, default='./checkpoints/USTC-TFC2016-20cls/', help='location of models checkpoints')
+parser.add_argument('--data_dir', type=str, default='./data/USTC-TFC2016/20cls/', help='location of train, valid and test data')
 
 # forecasting task
 parser.add_argument('--num_labels', type=int, default=20, help='labels num of specific task')
 parser.add_argument('--label_names_json', type=str, default='./mapper/USTC-TFC.json', help='record label names json')
-
 # models define
 parser.add_argument('--d_model', type=int, default=768, help='dimension of models')
 parser.add_argument('--n_heads', type=int, default=8, help='num of heads')
@@ -38,15 +37,14 @@ parser.add_argument('--d_ff', type=int, default=32, help='dimension of fcn')
 parser.add_argument('--dropout', type=float, default=0.1, help='dropout')
 parser.add_argument('--activation', type=str, default='gelu', help='activation')
 parser.add_argument('--prompt_domain', type=int, default=0, help='')
-parser.add_argument('--llm_model', type=str, default='LLAMA', help='LLM models')  # LLAMA, GPT2, BERT
-parser.add_argument('--llm_dim', type=int, default='4096', help='LLM models dimension')
+parser.add_argument('--llm_model', type=str, default='DEEPSEEK', help='LLM models')  # LLAMA, GPT2, BERT, DEEPSEEK
+parser.add_argument('--llm_dim', type=int, default='3584', help='LLM models dimension')
 
 # optimization
 parser.add_argument('--num_workers', type=int, default=10, help='data loader num workers')
 parser.add_argument('--itr', type=int, default=1, help='experiments times')
 parser.add_argument('--train_epochs', type=int, default=10, help='train epochs')
-parser.add_argument('--align_epochs', type=int, default=10, help='alignment epochs')
-parser.add_argument('--batch_size', type=int, default=32, help='batch size of train input data')
+parser.add_argument('--batch_size', type=int, default=4, help='batch size of train input data')
 parser.add_argument('--eval_batch_size', type=int, default=8, help='batch size of models evaluation')
 parser.add_argument('--patience', type=int, default=5, help='early stopping patience')
 parser.add_argument('--learning_rate', type=float, default=0.0001, help='optimizer learning rate')
@@ -55,9 +53,12 @@ parser.add_argument('--lradj', type=str, default='type1', help='adjust learning 
 parser.add_argument('--pct_start', type=float, default=0.2, help='pct_start')
 parser.add_argument('--use_amp', action='store_true', help='use automatic mixed precision training', default=False)
 parser.add_argument('--llm_layers', type=int, default=6)
-parser.add_argument('--percent', type=int, default=100)
-
+# train
+parser.add_argument('--from_ckpt', action="store_true", default=False, help="load from checkpoint")
+parser.add_argument('--interrupt_it', type=int, default=0, help='training interrupt ckpt')
+parser.add_argument('--valid_best_loss', type=float, help='best validation loss')
 args = parser.parse_args()
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 with open(args.label_names_json, 'r') as jsonData:
     mapper = json.load(jsonData)
@@ -65,33 +66,21 @@ with open(args.label_names_json, 'r') as jsonData:
 label_names = ' '.join(list(mapper.keys()))
 args.label_names = label_names
 
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-criterion = nn.CrossEntropyLoss()
+# 将模型、优化器、数据加载器等传递给 Accelerator 进行包装
 model = TCLLM.Model(args).float()
+model.to(device)
+dataset = FlowLabelDataset(args.data_dir + 'test.csv')
+dataloader = DataLoader(dataset, batch_size=args.batch_size, num_workers=args.num_workers)
+criterion = nn.CrossEntropyLoss()
 
-dataset = FlowLabelDataset('data/USTC-TFC2016/20cls/test.csv')
-dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
-index_file_path = f"{args.merge_ckpt}/pytorch_model.bin.index.json"
-
-with open(index_file_path, "r") as f:
-    index_data = json.load(f)
-
-shard_files = index_data["weight_map"].values()
-state_dict = OrderedDict()
-for shard_file in set(shard_files):
-    shard_path = f"{args.merge_ckpt}/{shard_file}"
-    shard_state_dict = torch.load(shard_path, map_location="cpu")
-    state_dict.update(shard_state_dict)
-
-model.load_state_dict(state_dict)
+model.load_model_states(args.checkpoints)
+model.eval()
 
 labels = np.array([])
 predicts = np.array([])
 
-model.to(device )
-model.eval()
-pbar = tqdm(dataloader, desc="eval", unit="batch", mininterval=10)
+
+pbar = tqdm(dataloader, desc=f"eval", unit="batch", mininterval=1)
 for headers, payloads, packet_num, link_type, duration, label in pbar:
     with torch.no_grad():
         headers = headers.to(device).float()
@@ -124,4 +113,3 @@ print(f"Confusion matrix:{confusion_matrix}")
 
 report = classification_report(labels, predicts)
 print(f"Classification report: {report}")
-

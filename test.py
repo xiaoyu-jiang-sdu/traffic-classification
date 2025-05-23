@@ -1,21 +1,28 @@
 import json
-from collections import OrderedDict
 
-import torch
+from transformers import AutoTokenizer
 
-index_file_path = "./merge_ckpt/pytorch_model.bin.index.json"
+with open('./mapper/USTC-TFC.json', 'r') as jsonData:
+    mapper = json.load(jsonData)
 
-with open(index_file_path, "r") as f:
-    index_data = json.load(f)
+label_names = list(mapper.keys())
+aim = f'given the categories  predict the flow category'
 
-shard_files = index_data["weight_map"].values()
-state_dict = OrderedDict()
-for shard_file in set(shard_files):
-    shard_path = f"./merge_ckpt/{shard_file}"
-    shard_state_dict = torch.load(shard_path, map_location="cpu")
-    state_dict.update(shard_state_dict)
+# 加载 tokenizer
+tokenizer = AutoTokenizer.from_pretrained(
+    # "~/.cache/huggingface/hub/models--deepseek-ai--DeepSeek-R1-Distill-Qwen-1.5B",
+    "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
+    trust_remote_code=True,
+    local_files_only=True,
+)
 
-embed_keys = [k for k in state_dict.keys() if "embedding" in k]
-embed_state_dict = {k: state_dict[k] for k in embed_keys}
+class A:
+    def __init__(self):
+        self.label_names = list(mapper.keys())
+        self.tokenizer = tokenizer
+        self.aim = f'given the categories {"".join(self.label_names)}, predict the flow category'
+        encoded = self.tokenizer(self.aim, return_tensors="pt", padding=True, truncation=True, max_length=2048)
+        self.n_seq = encoded.input_ids.shape[1]
 
-print(embed_state_dict)
+a = A()
+print(a.n_seq)
