@@ -87,15 +87,14 @@ def get_llm_model(llm_model, llm_layers, cache_dir=None):
                 cache_dir=cache_dir
             )
     elif llm_model == 'BERT':
-        bert_config = BertConfig.from_pretrained('google-bert/bert-base-uncased')
+        bert_config = BertConfig.from_pretrained('google-bert/bert-base-multilingual-uncased')
 
         bert_config.num_hidden_layers = llm_layers
         bert_config.output_attentions = True
         bert_config.output_hidden_states = True
         try:
             llm_model = BertModel.from_pretrained(
-                'google-bert/bert-base-uncased',
-                trust_remote_code=True,
+                'google-bert/bert-base-multilingual-uncased',
                 local_files_only=True,
                 config=bert_config,
                 cache_dir=cache_dir
@@ -103,7 +102,7 @@ def get_llm_model(llm_model, llm_layers, cache_dir=None):
         except EnvironmentError:  # downloads models from HF is not already done
             print("Local models files not found. Attempting to download...")
             llm_model = BertModel.from_pretrained(
-                'google-bert/bert-base-uncased',
+                'google-bert/bert-base-multilingual-uncased',
                 trust_remote_code=True,
                 local_files_only=False,
                 config=bert_config,
@@ -112,15 +111,14 @@ def get_llm_model(llm_model, llm_layers, cache_dir=None):
 
         try:
             tokenizer = BertTokenizer.from_pretrained(
-                'google-bert/bert-base-uncased',
-                trust_remote_code=True,
-                local_files_only=True,
+                'google-bert/bert-base-multilingual-uncased',
+                local_files_only=False,
                 cache_dir=cache_dir
             )
         except EnvironmentError:  # downloads the tokenizer from HF if not already done
             print("Local tokenizer files not found. Atempting to download them..")
             tokenizer = BertTokenizer.from_pretrained(
-                'google-bert/bert-base-uncased',
+                'google-bert/bert-base-multilingual-uncased',
                 trust_remote_code=True,
                 local_files_only=False,
                 cache_dir=cache_dir
@@ -136,7 +134,7 @@ def get_llm_model(llm_model, llm_layers, cache_dir=None):
         try:
             # 加载模型
             llm_model = AutoModel.from_pretrained(
-                # "~/.cache/huggingface/hub/models--deepseek-ai--DeepSeek-R1-Distill-Qwen-1.5B",
+                # "~/.cache/huggingface/hub/models--deepseek-ai--DeepSeek-R1-Distill-Qwen-7B",
                 "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
                 trust_remote_code=True,
                 local_files_only=True,
@@ -156,7 +154,7 @@ def get_llm_model(llm_model, llm_layers, cache_dir=None):
         try:
             # 加载 tokenizer
             tokenizer = AutoTokenizer.from_pretrained(
-                # "~/.cache/huggingface/hub/models--deepseek-ai--DeepSeek-R1-Distill-Qwen-1.5B",
+                # "~/.cache/huggingface/hub/models--deepseek-ai--DeepSeek-R1-Distill-Qwen-7B",
                 "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
                 trust_remote_code=True,
                 local_files_only=True,
@@ -166,6 +164,141 @@ def get_llm_model(llm_model, llm_layers, cache_dir=None):
             print("Local tokenizer files not found. Attempting to download...")
             tokenizer = AutoTokenizer.from_pretrained(
                 "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
+                trust_remote_code=True,
+                local_files_only=False,
+                cache_dir=cache_dir
+            )
+    elif llm_model == 'DEEPSEEK-1.5B':
+        # 使用模型名称加载配置
+        # .cache/huggingface/hub/deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B
+        config = AutoConfig.from_pretrained("deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B")
+        config.num_hidden_layers = llm_layers
+        config.output_attentions = True
+        config.output_hidden_states = True
+
+        try:
+            # 加载模型
+            llm_model = AutoModel.from_pretrained(
+                # "~/.cache/huggingface/hub/models--deepseek-ai--DeepSeek-R1-Distill-Qwen-7B",
+                "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
+                trust_remote_code=True,
+                local_files_only=True,
+                config=config,
+                cache_dir=cache_dir
+            )
+        except EnvironmentError:  # 如果本地没有模型文件，则尝试下载
+            print("Local model files not found. Attempting to download...")
+            llm_model = AutoModel.from_pretrained(
+                "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
+                trust_remote_code=True,
+                local_files_only=False,
+                config=config,
+                cache_dir=cache_dir
+            )
+
+        try:
+            # 加载 tokenizer
+            tokenizer = AutoTokenizer.from_pretrained(
+                # "~/.cache/huggingface/hub/models--deepseek-ai--DeepSeek-R1-Distill-Qwen-7B",
+                "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
+                trust_remote_code=True,
+                local_files_only=True,
+                cache_dir=cache_dir
+            )
+        except EnvironmentError:  # 如果本地没有 tokenizer 文件，则尝试下载
+            print("Local tokenizer files not found. Attempting to download...")
+            tokenizer = AutoTokenizer.from_pretrained(
+                "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
+                trust_remote_code=True,
+                local_files_only=False,
+                cache_dir=cache_dir
+            )
+    elif llm_model == 'DEEPSEEK-Llama-8B':
+        # 使用模型名称加载配置
+        # .cache/huggingface/hub/deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B
+        config = AutoConfig.from_pretrained("deepseek-ai/DeepSeek-R1-Distill-Llama-8B")
+        config.num_hidden_layers = llm_layers
+        config.output_attentions = True
+        config.output_hidden_states = True
+
+        try:
+            # 加载模型
+            llm_model = AutoModel.from_pretrained(
+                # "~/.cache/huggingface/hub/models--deepseek-ai--DeepSeek-R1-Distill-Qwen-7B",
+                "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
+                trust_remote_code=True,
+                local_files_only=False,
+                config=config,
+                cache_dir=cache_dir
+            )
+        except EnvironmentError:  # 如果本地没有模型文件，则尝试下载
+            print("Local model files not found. Attempting to download...")
+            llm_model = AutoModel.from_pretrained(
+                "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
+                trust_remote_code=True,
+                local_files_only=False,
+                config=config,
+                cache_dir=cache_dir
+            )
+
+        try:
+            # 加载 tokenizer
+            tokenizer = AutoTokenizer.from_pretrained(
+                # "~/.cache/huggingface/hub/models--deepseek-ai--DeepSeek-R1-Distill-Qwen-7B",
+                "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
+                trust_remote_code=True,
+                local_files_only=False,
+                cache_dir=cache_dir
+            )
+        except EnvironmentError:  # 如果本地没有 tokenizer 文件，则尝试下载
+            print("Local tokenizer files not found. Attempting to download...")
+            tokenizer = AutoTokenizer.from_pretrained(
+                "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
+                trust_remote_code=True,
+                local_files_only=False,
+                cache_dir=cache_dir
+            )
+    elif llm_model == 'Longformer':
+        # 使用模型名称加载配置
+        # .cache/huggingface/hub/deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B
+        config = AutoConfig.from_pretrained("allenai/longformer-base-4096")
+        config.num_hidden_layers = llm_layers
+        config.output_attentions = True
+        config.output_hidden_states = True
+
+        try:
+            # 加载模型
+            llm_model = AutoModel.from_pretrained(
+                # "~/.cache/huggingface/hub/models--deepseek-ai--DeepSeek-R1-Distill-Qwen-7B",
+                "allenai/longformer-base-4096",
+                trust_remote_code=True,
+                local_files_only=False,
+                config=config,
+                cache_dir=cache_dir
+            )
+        except EnvironmentError:  # 如果本地没有模型文件，则尝试下载
+            print("Local model files not found. Attempting to download...")
+            llm_model = AutoModel.from_pretrained(
+                "allenai/longformer-base-4096",
+                trust_remote_code=True,
+                local_files_only=False,
+                config=config,
+                cache_dir=cache_dir
+            )
+
+        try:
+            # 加载 tokenizer
+            tokenizer = AutoTokenizer.from_pretrained(
+                # "~/.cache/huggingface/hub/models--deepseek-ai--DeepSeek-R1-Distill-Qwen-7B",
+                "allenai/longformer-base-4096",
+                trust_remote_code=True,
+                local_files_only=False,
+                cache_dir=cache_dir
+            )
+        except EnvironmentError:  # 如果本地没有 tokenizer 文件，则尝试下载
+            print("Local tokenizer files not found. Attempting to download...")
+            tokenizer = AutoTokenizer.from_pretrained(
+                "allenai/longformer-base-4096",
                 trust_remote_code=True,
                 local_files_only=False,
                 cache_dir=cache_dir

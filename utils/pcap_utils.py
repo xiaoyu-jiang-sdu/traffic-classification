@@ -1,4 +1,5 @@
 import os
+import subprocess
 import sys
 
 from scapy.all import rdpcap
@@ -42,6 +43,55 @@ def split_cap(pcap_file, output_dir, dataset_level='flow'):
     os.system(command)
 
 
+# 按照时间间隔进行划分, 默认1s
+# Tor划分
+def split_cap_time(pcap_file, output_dir, seconds=1):
+    os.makedirs(output_dir, exist_ok=True)
+    cmd = f"SplitCap -r \"{pcap_file}\" -s seconds {seconds} -o \"{output_dir}\""
+
+    # 执行命令
+    os.system(cmd)
+# def split_pcap_by_fixed_time_interval(pcap_file, output_dir, interval=1):
+#     os.makedirs(output_dir, exist_ok=True)
+#
+#     # 提取所有时间戳
+#     cmd = f'tshark -r "{pcap_file}" -T fields -e frame.time_epoch'
+#     result = subprocess.check_output(cmd, shell=True).decode()
+#     times = [float(t) for t in result.splitlines() if t.strip()]
+#     if not times:
+#         print("无有效包")
+#         return
+#
+#     start_time = int(times[0])
+#     end_time = int(times[-1])
+#     print(f"划分时间：{start_time}s ~ {end_time}s，每 {interval}s 一段")
+#
+#     # 遍历时间段，按窗口切分
+#     slice_id = 0
+#     for t_start in range(start_time, end_time, interval):
+#         t_end = t_start + interval
+#         output_file = os.path.join(output_dir, f"time_{slice_id:05d}.pcap")
+#         filter_str = f'frame.time_epoch >= {t_start} && frame.time_epoch < {t_end}'
+#         cmd = f'tshark -r "{pcap_file}" -Y "{filter_str}" -w "{output_file}"'
+#         subprocess.call(cmd, shell=True)
+#         slice_id += 1
+def split_pcap_by_flow_tshark(pcap_file, output_dir):
+    os.makedirs(output_dir, exist_ok=True)
+
+    # 生成每个 TCP 会话编号
+    cmd = f"tshark -r \"{pcap_file}\" -T fields -e tcp.stream"
+    result = subprocess.check_output(cmd, shell=True).decode()
+    streams = sorted(set(line.strip() for line in result.splitlines() if line.strip().isdigit()))
+
+    for stream_id in streams:
+        out_file = os.path.join(output_dir, f"flow_{stream_id}.pcap")
+        extract_cmd = (
+            f"tshark -r \"{pcap_file}\" -Y \"tcp.stream == {stream_id}\" "
+            f"-w \"{out_file}\""
+        )
+        subprocess.call(extract_cmd, shell=True)
+
+
 # 使用tshark对packet进行过滤
 def filter_pcap(pcap_dir, output_dir):
     if not os.path.exists(output_dir):
@@ -57,5 +107,6 @@ def filter_pcap(pcap_dir, output_dir):
         print(f'clean file "{filename}"finish')
 
 if __name__ == '__main__':
-    output_dir = "E:/ChromeDownload/Tor/filtered"
-    filter_pcap('E:/ChromeDownload/Tor/Tor',output_dir)
+    dir = "E:/ChromeDownload/Tor/filtered"
+    filename = "Torrent01.pcapng"
+    convert_pcapng_2_pcap(dir, filename, dir)

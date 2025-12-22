@@ -21,11 +21,12 @@ class Model(nn.Module):
     def __init__(self, configs):
         super(Model, self).__init__()
         self.d_ff = configs.d_ff
+        self.d_model = configs.d_model
         self.d_llm = configs.llm_dim
         self.num_labels = configs.num_labels
         self.label_names = configs.label_names
         self.llm_model, self.tokenizer = get_llm_model(configs.llm_model, configs.llm_layers)
-
+        self.no_reprogram = configs.no_reprogram
         if self.tokenizer.eos_token:
             self.tokenizer.pad_token = self.tokenizer.eos_token
         else:
@@ -41,14 +42,19 @@ class Model(nn.Module):
         else:
             self.description = ('The USTC-TFC dataset contains various network traffic flows,'
                                 'including both benign and malicious patterns')
-        self.embedding = Embedding(
-            d_model=configs.d_model, dropout=configs.dropout)
-
-        self.word_embeddings = self.llm_model.get_input_embeddings().weight
-        self.vocab_size = self.word_embeddings.shape[0]
-        self.num_tokens = 1024
-        self.mapping_layer = nn.Linear(self.vocab_size, self.num_tokens)
-        self.reprogramming_layer = ReprogrammingLayer(configs.d_model, configs.n_heads, self.d_ff, self.d_llm)
+        if not self.no_reprogram:
+            self.embedding = Embedding(
+                d_model=configs.d_model, dropout=configs.dropout)
+            self.word_embeddings = self.llm_model.get_input_embeddings().weight
+            self.vocab_size = self.word_embeddings.shape[0]
+            self.num_tokens = 1024
+            self.mapping_layer = nn.Linear(self.vocab_size, self.num_tokens)
+            self.reprogramming_layer = ReprogrammingLayer(configs.d_model, configs.n_heads, self.d_ff, self.d_llm)
+        else:
+            self.embedding = Embedding(
+                d_model=configs.llm_dim, dropout=configs.dropout)
+            # self.header_mapping_layer = nn.Linear(self.d_model, self.d_llm)
+            # self.payload_mapping_layer = nn.Linear(self.d_model, self.d_llm)
         self.classifier = MLPHeader(self.d_llm, configs.num_labels)
 
     def forward(self, headers, payloads, packet_num, link_type, duration):
@@ -58,13 +64,17 @@ class Model(nn.Module):
         B, P, T = headers.size()
         _, _, L = payloads.size()
         headers, payloads = self.embedding(headers, payloads)
-        source_embeddings = self.mapping_layer(self.word_embeddings.permute(1, 0)).permute(1, 0)
-        headers = headers.view(B, P * T, -1)
-        payloads = payloads.view(B, P * L, -1)
-        headers = self.reprogramming_layer(headers, source_embeddings, source_embeddings)
-        payloads = self.reprogramming_layer(payloads, source_embeddings, source_embeddings)
-        headers = headers.view(B, P, T, -1)
-        payloads = payloads.view(B, P, L, -1)
+        if not self.no_reprogram:
+            source_embeddings = self.mapping_layer(self.word_embeddings.permute(1, 0)).permute(1, 0)
+            headers = headers.view(B, P * T, -1)
+            payloads = payloads.view(B, P * L, -1)
+            headers = self.reprogramming_layer(headers, source_embeddings, source_embeddings)
+            payloads = self.reprogramming_layer(payloads, source_embeddings, source_embeddings)
+            headers = headers.view(B, P, T, -1)
+            payloads = payloads.view(B, P, L, -1)
+        # else:
+        #     headers = self.header_mapping_layer(headers)
+        #     payloads = self.payload_mapping_layer(payloads)
 
         pad_token_id = self.tokenizer.convert_tokens_to_ids(self.tokenizer.pad_token)
         hdr_token = torch.full((B, P, 1), pad_token_id, dtype=torch.long).to(device)
@@ -110,11 +120,16 @@ class Model(nn.Module):
         return labels
 
     def save_model_states(self, checkpoint_path):
-        torch.save(self.mapping_layer.state_dict(), checkpoint_path + "mapping_layer.pt")
-        torch.save(self.reprogramming_layer.state_dict(), checkpoint_path + "reprogramming_layer.pt")
+        torch.save(self.embedding.state_dict(), checkpoint_path + "embedding.pt")
+        if not self.no_reprogram:
+            torch.save(self.mapping_layer.state_dict(), checkpoint_path + "mapping_layer.pt")
+            torch.save(self.reprogramming_layer.state_dict(), checkpoint_path + "reprogramming_layer.pt")
         torch.save(self.classifier.state_dict(), checkpoint_path + "classifier.pt")
 
     def load_model_states(self, checkpoint_path):
-        self.mapping_layer.load_state_dict(torch.load(checkpoint_path + "mapping_layer.pt", weights_only=False))
-        self.reprogramming_layer.load_state_dict(torch.load(checkpoint_path + "reprogramming_layer.pt", weights_only=False))
+        self.embedding.load_state_dict(torch.load(checkpoint_path + "embedding.pt", weights_only=False))
+        if not self.no_reprogram:
+            self.mapping_layer.load_state_dict(torch.load(checkpoint_path + "mapping_layer.pt", weights_only=False))
+            self.reprogramming_layer.load_state_dict(
+                torch.load(checkpoint_path + "reprogramming_layer.pt", weights_only=False))
         self.classifier.load_state_dict(torch.load(checkpoint_path + "classifier.pt", weights_only=False))

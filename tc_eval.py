@@ -26,6 +26,7 @@ parser.add_argument('--seed', type=int, default=2025, help='random seed')
 # data loader
 parser.add_argument('--checkpoints', type=str, default='./checkpoints/USTC-TFC2016-20cls/', help='location of models checkpoints')
 parser.add_argument('--data_dir', type=str, default='./data/USTC-TFC2016/20cls/', help='location of train, valid and test data')
+parser.add_argument('--result_path', type=str, default='./results/USTC-TFC2016-20cls', help='preds and labels tensor path')
 
 # forecasting task
 parser.add_argument('--num_labels', type=int, default=20, help='labels num of specific task')
@@ -39,7 +40,8 @@ parser.add_argument('--activation', type=str, default='gelu', help='activation')
 parser.add_argument('--prompt_domain', type=int, default=0, help='')
 parser.add_argument('--llm_model', type=str, default='DEEPSEEK', help='LLM models')  # LLAMA, GPT2, BERT, DEEPSEEK
 parser.add_argument('--llm_dim', type=int, default='3584', help='LLM models dimension')
-
+parser.add_argument('--no_reprogram', action="store_true", default=False, help='whether using reprogramming layer')
+parser.add_argument('--content', type=str, default='')
 # optimization
 parser.add_argument('--num_workers', type=int, default=10, help='data loader num workers')
 parser.add_argument('--itr', type=int, default=1, help='experiments times')
@@ -53,10 +55,7 @@ parser.add_argument('--lradj', type=str, default='type1', help='adjust learning 
 parser.add_argument('--pct_start', type=float, default=0.2, help='pct_start')
 parser.add_argument('--use_amp', action='store_true', help='use automatic mixed precision training', default=False)
 parser.add_argument('--llm_layers', type=int, default=6)
-# train
-parser.add_argument('--from_ckpt', action="store_true", default=False, help="load from checkpoint")
-parser.add_argument('--interrupt_it', type=int, default=0, help='training interrupt ckpt')
-parser.add_argument('--valid_best_loss', type=float, help='best validation loss')
+
 args = parser.parse_args()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -92,6 +91,8 @@ for headers, payloads, packet_num, link_type, duration, label in pbar:
     labels = np.concatenate((labels, label.cpu().numpy()))
     predicts = np.concatenate((predicts, pred.cpu().numpy()))
 
+np.save(args.result_path + 'predicts', predicts)
+np.save(args.result_path + 'labels', labels)
 # 计算准确率 (Accuracy)
 accuracy = accuracy_score(labels, predicts)
 print(f"Accuracy: {accuracy:.4f}")

@@ -38,7 +38,8 @@ parser.add_argument('--activation', type=str, default='gelu', help='activation')
 parser.add_argument('--prompt_domain', type=int, default=0, help='')
 parser.add_argument('--llm_model', type=str, default='DEEPSEEK', help='LLM models')  # LLAMA, GPT2, BERT, DEEPSEEK
 parser.add_argument('--llm_dim', type=int, default='3584', help='LLM models dimension')
-
+parser.add_argument('--no_reprogram', action="store_true", default=False, help='whether using reprogramming layer')
+parser.add_argument('--content', type=str, default='')
 # optimization
 parser.add_argument('--num_workers', type=int, default=10, help='data loader num workers')
 parser.add_argument('--itr', type=int, default=1, help='experiments times')
@@ -55,7 +56,6 @@ parser.add_argument('--llm_layers', type=int, default=6)
 # train
 parser.add_argument('--from_ckpt', action="store_true", default=False, help="load from checkpoint")
 parser.add_argument('--interrupt_it', type=int, default=0, help='training interrupt ckpt')
-parser.add_argument('--valid_best_loss', type=float, help='best validation loss')
 args = parser.parse_args()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -102,9 +102,6 @@ if args.from_ckpt:
     model.load_model_states(args.checkpoints)
 
 best_loss = float('inf')
-if args.valid_best_loss is not None:
-    best_loss = args.valid_best_loss
-
 early_stopping_counter = 0
 
 for epoch in range(args.train_epochs):
